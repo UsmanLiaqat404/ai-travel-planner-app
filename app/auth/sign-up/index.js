@@ -4,18 +4,60 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  ToastAndroid,
 } from "react-native";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigation, useRouter } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/configs/FirebaseConfig";
 
 export default function SignIn() {
   const navigation = useNavigation();
   const router = useRouter();
 
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, []);
+
+  const onCreateAccount = () => {
+    if (!fullName || !email || !password) {
+      ToastAndroid.show("Please fill all fields", ToastAndroid.LONG);
+      return;
+    }
+
+    createUserWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed up
+        const user = userCredential.user;
+        console.log(user);
+
+        // Update user profile
+        user.updateProfile({
+          displayName: fullName,
+        });
+
+        // Redirect to home
+        router.replace("/");
+
+        ToastAndroid.show("Account created successfully", ToastAndroid.LONG);
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        console.log(errorCode, errorMessage);
+
+        if (errorCode === "auth/email-already-in-use") {
+          ToastAndroid.show("Email already in use", ToastAndroid.LONG);
+        } else if (errorCode === "auth/weak-password") {
+          ToastAndroid.show("Weak password", ToastAndroid.LONG);
+        }
+      });
+  };
 
   return (
     <View
@@ -49,7 +91,11 @@ export default function SignIn() {
         >
           Full Name
         </Text>
-        <TextInput placeholder="Enter Full Name" style={styles.input} />
+        <TextInput
+          placeholder="Enter Full Name"
+          onChangeText={(text) => setFullName(text)}
+          style={styles.input}
+        />
       </View>
 
       {/* Email */}
@@ -66,8 +112,8 @@ export default function SignIn() {
           Email
         </Text>
         <TextInput
-          type="email"
           placeholder="Enter Email"
+          onChangeText={(text) => setEmail(text)}
           style={styles.input}
         />
       </View>
@@ -89,18 +135,19 @@ export default function SignIn() {
           type="password"
           secureTextEntry={true}
           placeholder="Enter Password"
+          onChangeText={(text) => setPassword(text)}
           style={styles.input}
         />
       </View>
 
       {/* Create Account Button */}
       <TouchableOpacity
+        onPress={onCreateAccount}
         style={{
           backgroundColor: Colors.PRIMARY,
-          marginTop: 40,
-          padding: 10,
+          padding: 14,
           borderRadius: 5,
-          marginTop: 20,
+          marginTop: 40,
           alignItems: "center",
           borderWidth: 1,
         }}
@@ -117,11 +164,11 @@ export default function SignIn() {
 
       {/* Sign In Button */}
       <TouchableOpacity
-        onPress={() => router.push("/auth/sign-in")}
+        onPress={() => router.replace("/auth/sign-in")}
         style={{
           backgroundColor: Colors.WHITE,
           marginTop: 20,
-          padding: 10,
+          padding: 14,
           borderRadius: 5,
           alignItems: "center",
           borderWidth: 1,
@@ -142,7 +189,6 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   input: {
-    height: 40,
     borderColor: Colors.GRAY,
     borderWidth: 1,
     borderRadius: 5,
